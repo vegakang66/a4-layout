@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <title>🎨 圖片速排工具 - 星鴻宜蘭團隊</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    :root {
+      color-scheme: light dark;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans TC", sans-serif;
+      margin: 0;
+      padding: 16px;
+      background: #f5f5f5;
+      color: #222;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      body {
+        background: #121212;
+        color: #eee;
+      }
+      .preview-container {
+        background: #222;
+      }
+      .status {
+        color: #ddd;
+      }
+      .info {
+        color: #ccc;
+      }
+    }
+
+    .page {
+      max-width: 960px;
+      margin: 0 auto;
+      text-align: center;
+    }
+
+    h1 {
+      font-size: 22px;
+      margin: 0 0 12px 0;
+    }
+
+    .toolbar {
+      margin-bottom: 12px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+      justify-content: center;
+    }
+
+    button {
+      padding: 8px 14px;
+      border-radius: 4px;
+      border: none;
+      cursor: pointer;
+      font-size: 14px;
+      white-space: nowrap;
+    }
+
+    button.primary {
+      background-color: #007bff;
+      color: #fff;
+    }
+
+    button.secondary {
+      background-color: #6c757d;
+      color: #fff;
+    }
+
+    button.danger {
+      background-color: #dc3545;
+      color: #fff;
+    }
+
+    #fileInput {
+      display: none;
+    }
+
+    .preview-wrapper {
+      width: 100%;
+      display: flex;
+      justify-content: center;
+      margin-bottom: 8px;
+    }
+
+    .preview-container {
+      background: #e0e0e0;
+      padding: 8px;
+      border-radius: 6px;
+      width: 100%;
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    #a4Canvas {
+      background: #ffffff;
+      display: block;
+      width: 100%;
+      height: auto;
+      box-shadow: 0 0 8px rgba(0,0,0,0.25);
+    }
+
+    .status {
+      margin-top: 4px;
+      font-size: 12px;
+      color: #333;
+    }
+
+    .info {
+      margin-top: 16px;
+      font-size: 12px;
+      color: #555;
+      line-height: 1.6;
+      text-align: center;
+    }
+
+    .info-title {
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+
+    .edit-panel {
+      position: fixed;
+      left: 50%;
+      bottom: 16px;
+      transform: translateX(-50%);
+      background: rgba(0, 0, 0, 0.85);
+      color: #fff;
+      padding: 10px 14px;
+      border-radius: 8px;
+      display: none;
+      z-index: 1000;
+      max-width: 95%;
+    }
+
+    .edit-panel-inner {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .edit-label {
+      font-size: 12px;
+      margin-right: 4px;
+    }
+
+    .edit-buttons {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .edit-buttons button {
+      background: #17a2b8;
+      color: #fff;
+      border-radius: 4px;
+      padding: 4px 8px;
+      font-size: 12px;
+      border: none;
+      cursor: pointer;
+    }
+
+    .close-edit {
+      background: #6c757d;
+      color: #fff;
+      padding: 4px 8px;
+      border-radius: 4px;
+      border: none;
+      font-size: 12px;
+      cursor: pointer;
+    }
+
+    @media (max-width: 600px) {
+      body {
+        padding: 12px;
+      }
+      h1 {
+        font-size: 18px;
+      }
+      .preview-container {
+        padding: 6px;
+      }
+    }
+
+    /* 列印樣式 */
+    @media print {
+      body {
+        margin: 0;
+        padding: 0;
+        background: #ffffff;
+        color: #000;
+      }
+      .toolbar,
+      .status,
+      .info,
+      .edit-panel {
+        display: none !important;
+      }
+      .preview-wrapper,
+      .preview-container {
+        margin: 0;
+        padding: 0;
+        background: #ffffff;
+        width: 100%;
+        max-width: none;
+      }
+      #a4Canvas {
+        box-shadow: none;
+        width: 210mm;
+        height: 297mm;
+      }
+      @page {
+        size: A4;
+        margin: 0;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <h1>🎨 圖片速排工具 - 星鴻宜蘭團隊</h1>
+
+    <div class="toolbar">
+      <button class="primary" id="uploadBtn">上傳圖片</button>
+      <button class="secondary" id="printBtn">列印</button>
+      <button class="secondary" id="downloadBtn">下載</button>
+      <button class="danger" id="clearBtn">清除</button>
+      <input type="file" id="fileInput" accept="image/jpeg,image/png" multiple>
+    </div>
+
+    <div class="preview-wrapper">
+      <div class="preview-container">
+        <!-- 300 DPI 的 A4 畫布：2480 x 3508 像素（210×297 mm） -->
+        <canvas id="a4Canvas" width="2480" height="3508"></canvas>
+        <div class="status" id="statusText">尚未上傳圖片。</div>
+      </div>
+    </div>
+
+    <div class="info">
+      <div class="info-title">說明</div>
+      • 畫布：A4（300dpi）2480×3508 像素，實體對應 210×297 mm。<br>
+      • A4 畫布邊緣預留 5mm 列印安全區，不會排版到邊界。<br>
+      • 可上傳多張 JPG/PNG，會自動等比例排版到單一 A4 頁面中。<br>
+      • 建議使用桌面版 Chrome / Edge / Firefox 以獲得最佳列印效果。
+    </div>
+  </div>
+
+  <div class="edit-panel" id="editPanel">
+    <div class="edit-panel-inner">
+      <span class="edit-label">選取圖片：<span id="currentIndexLabel"></span></span>
+      <div class="edit-buttons">
+        <button type="button" id="rotateLeftBtn">左90度</button>
+        <button type="button" id="rotateRightBtn">右90度</button>
+        <button type="button" id="zoomInBtn">放大</button>
+        <button type="button" id="zoomOutBtn">縮小</button>
+        <button type="button" id="moveUpBtn">上</button>
+        <button type="button" id="moveDownBtn">下</button>
+        <button type="button" id="moveLeftBtn">左</button>
+        <button type="button" id="moveRightBtn">右</button>
+      </div>
+      <button type="button" id="closeEditBtn" class="close-edit">關閉</button>
+    </div>
+  </div>
+
+  <script>
+    const A4_WIDTH = 2480;   // px at 300dpi
+    const A4_HEIGHT = 3508;  // px at 300dpi
+
+    // 5mm 安全邊界（210x297 mm -> 2480x3508 px）
+    const MARGIN_MM = 5; // 5mm
+    const PX_PER_MM_WIDTH = A4_WIDTH / 210;
+    const PX_PER_MM_HEIGHT = A4_HEIGHT / 297;
+    const MARGIN_X = MARGIN_MM * PX_PER_MM_WIDTH;
+    const MARGIN_Y = MARGIN_MM * PX_PER_MM_HEIGHT;
+
+    const MOVE_MM = 5; // 移動距離 5mm
+    const MOVE_X = MOVE_MM * PX_PER_MM_WIDTH;
+    const MOVE_Y = MOVE_MM * PX_PER_MM_HEIGHT;
+
+    const uploadBtn = document.getElementById('uploadBtn');
+    const printBtn = document.getElementById('printBtn');
+    const downloadBtn = document.getElementById('downloadBtn');
+    const clearBtn = document.getElementById('clearBtn');
+    const fileInput = document.getElementById('fileInput');
+    const canvas = document.getElementById('a4Canvas');
+    const ctx = canvas.getContext('2d');
+    const statusText = document.getElementById('statusText');
+
+    const editPanel = document.getElementById('editPanel');
+    const currentIndexLabel = document.getElementById('currentIndexLabel');
+    const rotateLeftBtn = document.getElementById('rotateLeftBtn');
+    const rotateRightBtn = document.getElementById('rotateRightBtn');
+    const zoomInBtn = document.getElementById('zoomInBtn');
+    const zoomOutBtn = document.getElementById('zoomOutBtn');
+    const moveUpBtn = document.getElementById('moveUpBtn');
+    const moveDownBtn = document.getElementById('moveDownBtn');
+    const moveLeftBtn = document.getElementById('moveLeftBtn');
+    const moveRightBtn = document.getElementById('moveRightBtn');
+    const closeEditBtn = document.getElementById('closeEditBtn');
+
+    let imageFiles = [];
+    let imageBitmaps = [];
+    let imageStates = []; // 每張圖的旋轉、縮放與偏移狀態
+    let currentEditIndex = null;
+
+    const layoutInfo = {
+      cols: 0,
+      rows: 0,
+      cellWidth: 0,
+      cellHeight: 0,
+      offsetX: MARGIN_X,
+      offsetY: MARGIN_Y,
+      layoutWidth: A4_WIDTH - 2 * MARGIN_X,
+      layoutHeight: A4_HEIGHT - 2 * MARGIN_Y
+    };
+
+    function resetCanvas() {
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, A4_WIDTH, A4_HEIGHT);
+
+      // 畫出安全範圍框線便於視覺確認
+      ctx.strokeStyle = '#cccccc';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(
+        layoutInfo.offsetX,
+        layoutInfo.offsetY,
+        layoutInfo.layoutWidth,
+        layoutInfo.layoutHeight
+      );
+    }
+
+    resetCanvas();
+
+    uploadBtn.addEventListener('click', () => {
+      fileInput.click();
+    });
+
+    fileInput.addEventListener('change', async (event) => {
+      const files = Array.from(event.target.files || []).filter(f =>
+        f.type === 'image/jpeg' || f.type === 'image/png'
+      );
+
+      if (files.length === 0) {
+        statusText.textContent = '未選取有效的 JPG/PNG 圖片。';
+        return;
+      }
+
+      imageFiles = files;
+      statusText.textContent = `正在載入 ${imageFiles.length} 張圖片，請稍候…`;
+      await loadAndLayoutImages();
+    });
+
+    async function loadAndLayoutImages() {
+      try {
+        imageBitmaps = [];
+        imageStates = [];
+        resetCanvas();
+
+        const bitmapPromises = imageFiles.map(file => {
+          return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => {
+              const img = new Image();
+              img.onload = () => {
+                resolve(img);
+              };
+              img.onerror = reject;
+              img.src = reader.result;
+            };
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+          });
+        });
+
+        imageBitmaps = await Promise.all(bitmapPromises);
+
+        // 初始化每張圖的狀態
+        imageStates = imageBitmaps.map(() => ({
+          rotation: 0,  // 0/90/180/270
+          scale: 1,     // 相對於「完整呈現」的縮放比例，可 >1 放大
+          offsetX: 0,   // 在 cell 內水平方向偏移（px）
+          offsetY: 0    // 在 cell 內垂直方向偏移（px）
+        }));
+
+        layoutImagesOnA4();
+
+        statusText.textContent = `已排版 ${imageBitmaps.length} 張圖片，點選畫布中的圖片可微調方向、大小與位置。`;
+      } catch (err) {
+        console.error(err);
+        statusText.textContent = '載入圖片時發生錯誤。';
+      }
+    }
+
+    function layoutImagesOnA4() {
+      resetCanvas();
+
+      const count = imageBitmaps.length;
+      if (count === 0) return;
+
+      const layoutWidth = layoutInfo.layoutWidth;
+      const layoutHeight = layoutInfo.layoutHeight;
+
+      const cols = Math.ceil(Math.sqrt(count));
+      const rows = Math.ceil(count / cols);
+
+      const cellWidth = layoutWidth / cols;
+      const cellHeight = layoutHeight / rows;
+
+      layoutInfo.cols = cols;
+      layoutInfo.rows = rows;
+      layoutInfo.cellWidth = cellWidth;
+      layoutInfo.cellHeight = cellHeight;
+
+      imageBitmaps.forEach((img, index) => {
+        const row = Math.floor(index / cols);
+        const col = index % cols;
+
+        const x = layoutInfo.offsetX + col * cellWidth;
+        const y = layoutInfo.offsetY + row * cellHeight;
+
+        const state = imageStates[index] || { rotation: 0, scale: 1, offsetX: 0, offsetY: 0 };
+        const angle = state.rotation % 360;
+        const rad = angle * Math.PI / 180;
+
+        // 旋轉後的邊長（只用來算 base scale）
+        const isOdd = angle % 180 !== 0;
+        const rotatedWidth = isOdd ? img.height : img.width;
+        const rotatedHeight = isOdd ? img.width : img.height;
+
+        const baseScale = Math.min(
+          cellWidth / rotatedWidth,
+          cellHeight / rotatedHeight
+        );
+
+        // 允許放大超過完整呈現倍率，僅限制最小縮小倍率避免完全看不到
+        const safeScale = Math.max(0.1, state.scale || 1);
+        const finalScale = safeScale * baseScale;
+
+        const drawWidth = img.width * finalScale;
+        const drawHeight = img.height * finalScale;
+
+        const cx = x + cellWidth / 2 + (state.offsetX || 0);
+        const cy = y + cellHeight / 2 + (state.offsetY || 0);
+
+        ctx.save();
+        ctx.translate(cx, cy);
+        ctx.rotate(rad);
+        ctx.drawImage(img, -drawWidth / 2, -drawHeight / 2, drawWidth, drawHeight);
+        ctx.restore();
+      });
+    }
+
+    // 畫布點擊偵測：計算點到哪一格
+    canvas.addEventListener('click', (event) => {
+      if (!imageBitmaps.length) return;
+
+      const rect = canvas.getBoundingClientRect();
+      const scaleX = canvas.width / rect.width;
+      const scaleY = canvas.height / rect.height;
+
+      const x = (event.clientX - rect.left) * scaleX;
+      const y = (event.clientY - rect.top) * scaleY;
+
+      const { cols, rows, cellWidth, cellHeight, offsetX, offsetY, layoutWidth, layoutHeight } = layoutInfo;
+
+      if (
+        x < offsetX ||
+        x > offsetX + layoutWidth ||
+        y < offsetY ||
+        y > offsetY + layoutHeight
+      ) {
+        return;
+      }
+
+      const localX = x - offsetX;
+      const localY = y - offsetY;
+
+      const col = Math.floor(localX / cellWidth);
+      const row = Math.floor(localY / cellHeight);
+
+      const index = row * cols + col;
+
+      if (index < 0 || index >= imageBitmaps.length) return;
+
+      currentEditIndex = index;
+      currentIndexLabel.textContent = `第 ${index + 1} 張`;
+      editPanel.style.display = 'block';
+    });
+
+    function rotateCurrent(delta) {
+      if (currentEditIndex === null) return;
+      const state = imageStates[currentEditIndex];
+      state.rotation = (state.rotation + delta + 360) % 360;
+      layoutImagesOnA4();
+    }
+
+    function zoomCurrent(delta) {
+      if (currentEditIndex === null) return;
+      const state = imageStates[currentEditIndex];
+      const currentScale = state.scale || 1;
+      state.scale = Math.max(0.1, currentScale + delta); // 無上限，只保留最小值
+      layoutImagesOnA4();
+    }
+
+    function moveCurrent(dx, dy) {
+      if (currentEditIndex === null) return;
+      const state = imageStates[currentEditIndex];
+      state.offsetX += dx;
+      state.offsetY += dy;
+      layoutImagesOnA4();
+    }
+
+    rotateLeftBtn.addEventListener('click', () => rotateCurrent(-90));
+    rotateRightBtn.addEventListener('click', () => rotateCurrent(90));
+    zoomInBtn.addEventListener('click', () => zoomCurrent(0.1));
+    zoomOutBtn.addEventListener('click', () => zoomCurrent(-0.1));
+
+    moveUpBtn.addEventListener('click', () => moveCurrent(0, -MOVE_Y));
+    moveDownBtn.addEventListener('click', () => moveCurrent(0, MOVE_Y));
+    moveLeftBtn.addEventListener('click', () => moveCurrent(-MOVE_X, 0));
+    moveRightBtn.addEventListener('click', () => moveCurrent(MOVE_X, 0));
+
+    closeEditBtn.addEventListener('click', () => {
+      editPanel.style.display = 'none';
+      currentEditIndex = null;
+    });
+
+    printBtn.addEventListener('click', () => {
+      if (imageBitmaps.length === 0) {
+        alert('請先上傳至少一張圖片再列印。');
+        return;
+      }
+      window.print();
+    });
+
+    downloadBtn.addEventListener('click', () => {
+      if (imageBitmaps.length === 0) {
+        alert('請先上傳至少一張圖片再下載。');
+        return;
+      }
+      canvas.toBlob((blob) => {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        const now = new Date();
+        const ts = now.toISOString().replace(/[:.]/g, '-');
+        a.download = `A4_300dpi_layout_${ts}.png`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }, 'image/png');
+    });
+
+    clearBtn.addEventListener('click', () => {
+      imageFiles = [];
+      imageBitmaps = [];
+      imageStates = [];
+      fileInput.value = '';
+      currentEditIndex = null;
+      editPanel.style.display = 'none';
+      resetCanvas();
+      statusText.textContent = '已清除畫布與圖片。';
+    });
+  </script>
+</body>
+</html>
