@@ -194,6 +194,9 @@
 
     /* 列印樣式 */
     @media print {
+      h1 { display: none !important; }
+      .page { width: 210mm; max-width: none; margin: 0; padding: 0; }
+      .preview-wrapper { display: block; }
       body {
         margin: 0;
         padding: 0;
