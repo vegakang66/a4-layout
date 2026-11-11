@@ -236,7 +236,8 @@
     <div class="toolbar">
       <button class="primary" id="uploadBtn">上傳圖片</button>
       <button class="secondary" id="printBtn">列印</button>
-      <button class="secondary" id="downloadBtn">下載</button>
+      <button class="secondary" id="downloadBtn">下載(A4)</button>
+      <button class="secondary" id="downloadCropBtn">下載(僅圖)</button>
       <button class="danger" id="clearBtn">清除</button>
       <input type="file" id="fileInput" accept="image/jpeg,image/png" multiple>
     </div>
@@ -311,6 +312,7 @@
     const moveRightBtn = document.getElementById('moveRightBtn');
     const closeEditBtn = document.getElementById('closeEditBtn');
 
+    let imageBounds = [];
     let imageFiles = [];
     let imageBitmaps = [];
     let imageStates = []; // 每張圖的旋轉、縮放與偏移狀態
@@ -406,6 +408,7 @@
 
     function layoutImagesOnA4() {
       resetCanvas();
+      imageBounds = [];
 
       const count = imageBitmaps.length;
       if (count === 0) return;
@@ -455,6 +458,14 @@
         const cx = x + cellWidth / 2 + (state.offsetX || 0);
         const cy = y + cellHeight / 2 + (state.offsetY || 0);
 
+        // Track rotated image edges, including the user's zoom and position adjustments.
+        const halfWidth = (Math.abs(Math.cos(rad)) * drawWidth + Math.abs(Math.sin(rad)) * drawHeight) / 2;
+        const halfHeight = (Math.abs(Math.sin(rad)) * drawWidth + Math.abs(Math.cos(rad)) * drawHeight) / 2;
+        const left = Math.max(0, Math.floor(cx - halfWidth));
+        const top = Math.max(0, Math.floor(cy - halfHeight));
+        const right = Math.min(A4_WIDTH, Math.ceil(cx + halfWidth));
+        const bottom = Math.min(A4_HEIGHT, Math.ceil(cy + halfHeight));
+        if (right > left && bottom > top) imageBounds.push({ left, top, right, bottom });
         ctx.save();
         ctx.translate(cx, cy);
         ctx.rotate(rad);
@@ -546,24 +557,45 @@
       window.print();
     });
 
-    downloadBtn.addEventListener('click', () => {
+    function downloadLayout(crop) {
       if (imageBitmaps.length === 0) {
         alert('請先上傳至少一張圖片再下載。');
         return;
       }
-      canvas.toBlob((blob) => {
+      let output = canvas;
+      if (crop) {
+        layoutImagesOnA4();
+        if (!imageBounds.length) {
+          alert('圖片已移出畫布範圍，請調整位置後再下載。');
+          return;
+        }
+        const left = Math.min(...imageBounds.map(b => b.left));
+        const top = Math.min(...imageBounds.map(b => b.top));
+        const right = Math.max(...imageBounds.map(b => b.right));
+        const bottom = Math.max(...imageBounds.map(b => b.bottom));
+        output = document.createElement('canvas');
+        output.width = right - left;
+        output.height = bottom - top;
+        const outputCtx = output.getContext('2d');
+        outputCtx.fillStyle = '#ffffff';
+        outputCtx.fillRect(0, 0, output.width, output.height);
+        outputCtx.drawImage(canvas, left, top, output.width, output.height, 0, 0, output.width, output.height);
+      }
+      output.toBlob((blob) => {
+        if (!blob) { alert('下載圖片產生失敗，請重試。'); return; }
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        const now = new Date();
-        const ts = now.toISOString().replace(/[:.]/g, '-');
-        a.download = `A4_300dpi_layout_${ts}.jpg`;
+        const ts = new Date().toISOString().replace(/[:.]/g, '-');
+        a.download = (crop ? 'collage_' : 'A4_300dpi_layout_') + ts + '.jpg';
         document.body.appendChild(a);
         a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 60000);
       }, 'image/jpeg', 0.72);
-    });
+    }
+    downloadBtn.addEventListener('click', () => downloadLayout(false));
+    document.getElementById('downloadCropBtn').addEventListener('click', () => downloadLayout(true));
 
     clearBtn.addEventListener('click', () => {
       imageFiles = [];
