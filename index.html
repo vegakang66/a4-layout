@@ -557,12 +557,12 @@
         a.href = url;
         const now = new Date();
         const ts = now.toISOString().replace(/[:.]/g, '-');
-        a.download = `A4_300dpi_layout_${ts}.png`;
+        a.download = `A4_300dpi_layout_${ts}.jpg`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
-      }, 'image/png');
+      }, 'image/jpeg', 0.72);
     });
 
     clearBtn.addEventListener('click', () => {
